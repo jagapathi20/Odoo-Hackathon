@@ -1,16 +1,237 @@
-# React + Vite
+# 🎨 AssetFlow Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, responsive frontend for **AssetFlow**, an Asset Management System developed for the **Odoo Hackathon**. The application provides an intuitive interface for managing organizational assets, bookings, maintenance requests, audits, reports, and notifications.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ✨ Features
 
-## React Compiler
+### 🔐 Authentication
+- Modern login interface
+- Protected routes
+- Role-based navigation (Admin, Asset Manager, Department Head, Employee)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 📊 Dashboard
+- KPI Cards
+- Recent Activity
+- Quick Actions
+- Responsive Layout
 
-## Expanding the ESLint configuration
+### 🏢 Organization
+- Department Management
+- Employee Management
+- Category Management
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 💻 Asset Directory
+- Asset Listing
+- Search Assets
+- Asset Status
+- Asset Information Table
+
+### 📦 Asset Allocation
+- Allocate Assets
+- Allocation History
+- Allocation Status
+
+### 📅 Booking Management
+- Resource Booking
+- Booking Status
+- Booking History
+
+### 🛠 Maintenance
+- Maintenance Requests
+- Priority Tracking
+- Status Management
+
+### ✔ Audits
+- Audit Schedule
+- Auditor Assignment
+- Audit Status
+
+### 📈 Reports
+- Dashboard Analytics
+- Asset Statistics
+- Visual Reports
+
+### 🔔 Notifications
+- System Notifications
+- Alerts
+- Status Updates
+
+---
+
+## 🛠 Tech Stack
+
+- React 19
+- Vite
+- Tailwind CSS
+- shadcn/ui
+- React Router DOM
+- Axios
+- Lucide React
+- React Query
+
+---
+
+## 📂 Folder Structure
+
+```text
+src/
+│
+├── api/
+├── components/
+│   ├── dashboard/
+│   ├── assets/
+│   ├── allocations/
+│   ├── bookings/
+│   ├── maintenance/
+│   ├── audits/
+│   ├── reports/
+│   ├── notifications/
+│   ├── layout/
+│   └── ui/
+│
+├── context/
+├── features/
+├── hooks/
+├── pages/
+├── routes/
+├── styles/
+├── test/
+└── utils/
+```
+
+---
+
+## 🚀 Installation
+
+Clone the repository
+
+```bash
+git clone <repository-url>
+```
+
+Move to the frontend directory
+
+```bash
+cd Frontend
+```
+
+Install dependencies
+
+```bash
+npm install
+```
+
+Start development server
+
+```bash
+npm run dev
+```
+
+Open
+
+```
+http://localhost:5173
+```
+
+---
+
+## 🧪 Unit Testing
+
+Run all tests
+
+```bash
+npm test
+```
+
+Run tests once
+
+```bash
+npm run test:run
+```
+
+---
+
+## 🏗 Build
+
+Create a production build
+
+```bash
+npm run build
+```
+
+Preview the production build
+
+```bash
+npm run preview
+```
+
+---
+
+## 📱 Implemented Pages
+
+- Login
+- Dashboard
+- Organization
+- Asset Directory
+- Asset Allocation
+- Bookings
+- Maintenance
+- Audits
+- Reports
+- Notifications
+
+---
+
+## 🎯 Frontend Highlights
+
+- Responsive design
+- Component-based architecture
+- Reusable UI components
+- Protected routing
+- Modern sidebar navigation
+- Role-based navigation structure
+- Modular folder organization
+- Unit testing with Vitest
+
+---
+
+## 📷 Screenshots
+
+### Login
+
+_Add screenshot_
+
+### Dashboard
+
+_Add screenshot_
+
+### Asset Directory
+
+_Add screenshot_
+
+### Reports
+
+_Add screenshot_
+
+---
+
+## 📌 Future Enhancements
+
+- Dark Mode
+- API Integration
+- Real-time Notifications
+- Charts using Recharts
+- QR Code Scanner
+- File Upload Support
+- User Profile Management
+- Theme Customization
+
+---
+
+## 👨‍💻 Frontend Developer
+
+**infinity5544**
+
+Built using React, Vite, Tailwind CSS, and shadcn/ui for the Odoo Hackathon.

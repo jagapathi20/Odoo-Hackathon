@@ -1,5 +1,18 @@
+import AppLayout from "@/components/layout/AppLayout";
+import AssetTable from "@/components/assets/AssetTable";
+
 function AssetDirectoryPage() {
-  return <h1>Asset Directory Page</h1>;
+  return (
+    <AppLayout>
+
+      <h1 className="text-3xl font-bold mb-8">
+        Asset Directory
+      </h1>
+
+      <AssetTable />
+
+    </AppLayout>
+  );
 }
 
 export default AssetDirectoryPage;

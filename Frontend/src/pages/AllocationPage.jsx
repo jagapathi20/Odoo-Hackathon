@@ -1,5 +1,18 @@
+import AppLayout from "@/components/layout/AppLayout";
+import AllocationTable from "@/components/allocations/AllocationTable";
+
 function AllocationPage() {
-  return <h1>Allocation Page</h1>;
+  return (
+    <AppLayout>
+
+      <h1 className="text-3xl font-bold mb-8">
+        Asset Allocation
+      </h1>
+
+      <AllocationTable />
+
+    </AppLayout>
+  );
 }
 
 export default AllocationPage;

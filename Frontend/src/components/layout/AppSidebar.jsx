@@ -18,39 +18,66 @@ function AppSidebar() {
   const location = useLocation();
 
   return (
-    <Sidebar>
+    <Sidebar className="border-r bg-white">
 
-      <SidebarHeader className="border-b h-16 flex items-center justify-center">
+      <SidebarHeader className="border-b px-6 py-8">
 
-        <h1 className="text-2xl font-bold text-indigo-600">
-          AssetFlow
-        </h1>
+        <div className="flex flex-col">
+
+          <h1 className="text-4xl font-extrabold tracking-tight text-indigo-600">
+            AssetFlow
+          </h1>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Asset Management
+          </p>
+
+        </div>
 
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-3 py-5">
 
         <SidebarGroup>
 
           <SidebarGroupContent>
 
-            <SidebarMenu>
+            <SidebarMenu className="space-y-2">
 
               {navigation.map((item) => {
                 const Icon = item.icon;
+
+                const active = location.pathname === item.path;
 
                 return (
                   <SidebarMenuItem key={item.title}>
 
                     <SidebarMenuButton
                       asChild
-                      isActive={location.pathname === item.path}
+                      isActive={active}
+                      className={`
+                        h-14 rounded-xl transition-all duration-200
+                        ${active
+                          ? "bg-indigo-50 text-indigo-600 font-semibold shadow-sm"
+                          : "hover:bg-slate-100 hover:text-indigo-600"}
+                      `}
                     >
-                      <Link to={item.path}>
+                      <Link
+                        to={item.path}
+                        className="flex items-center gap-4 px-4"
+                      >
+                        <div
+                          className={`
+                            flex h-10 w-10 items-center justify-center rounded-xl
+                            ${active ? "bg-indigo-100" : "bg-slate-100"}
+                          `}
+                        >
+                          <Icon size={20} />
+                        </div>
 
-                        <Icon size={18} />
-
-                        <span>{item.title}</span>
+                        <span className="text-base">
+                          {item.title}
+                        </span>
 
                       </Link>
 
@@ -68,17 +95,25 @@ function AppSidebar() {
 
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t bg-slate-50 p-5">
 
-        <div>
+        <div className="flex items-center gap-3">
 
-          <p className="font-semibold">
-            Admin
-          </p>
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">
+            A
+          </div>
 
-          <p className="text-sm text-slate-500">
-            Asset Manager
-          </p>
+          <div>
+
+            <p className="font-semibold text-slate-800">
+              Admin
+            </p>
+
+            <p className="text-sm text-slate-500">
+              Asset Manager
+            </p>
+
+          </div>
 
         </div>
 

@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.services.allocation_service import AllocationConflictError
 
 app = FastAPI(
     title="AssetFlow API",
@@ -25,6 +27,20 @@ if settings.ALLOWED_ORIGINS:
 
 # Connect the domain-driven endpoints router
 app.include_router(api_router, prefix="/api/v1")
+
+
+# FIX: allocation_service.check_and_allocate raises a domain-specific
+# AllocationConflictError, but nothing previously converted that into an
+# HTTP response — it would have surfaced as an unhandled 500 the moment the
+# allocations router was wired to call the service directly. This handler
+# restores the documented 409 ASSET_ALREADY_ALLOCATED contract.
+@app.exception_handler(AllocationConflictError)
+async def allocation_conflict_handler(request: Request, exc: AllocationConflictError):
+    return JSONResponse(
+        status_code=409,
+        content={"detail": exc.current_holder_info},
+    )
+
 
 @app.get("/health", tags=["Health Check"])
 def health_check():

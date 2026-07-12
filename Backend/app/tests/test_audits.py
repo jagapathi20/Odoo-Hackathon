@@ -25,19 +25,22 @@ def setup_audit_fixtures(db):
     )
     db.add_all([manager, unverified_asset])
     db.commit()
+    db.refresh(manager)
+    db.refresh(unverified_asset)
     return manager, unverified_asset
 
 # ============================================================================
 # 1. AUDITOR PRIVILEGE BOUNDARY ENFORCEMENT
 # ============================================================================
 def test_only_assigned_auditors_can_modify_audit_items(db_session, client, generate_token):
-    """Enforces that an operator must be explicitly registered on the cycle to log physical metrics."""
+    """Enforces that an operator must be explicitly registered on the cycle."""
     manager, asset = setup_audit_fixtures(db_session)
     unassigned_user = User(
         id=uuid.uuid4(), name="Intruder", email="intruder@company.com",
         hashed_password="pw", role=Role.EMPLOYEE, is_active=True
     )
     db_session.add(unassigned_user)
+    db_session.commit()
     
     cycle = AuditCycle(
         id=uuid.uuid4(), name="Q3 Verification", status=AuditCycleStatus.OPEN,
@@ -53,14 +56,10 @@ def test_only_assigned_auditors_can_modify_audit_items(db_session, client, gener
     db_session.add(item)
     db_session.commit()
 
-    # Authenticate as the unassigned user rather than the true tracking auditor
     token = generate_token(unassigned_user.id, Role.EMPLOYEE.value)
     headers = {"Authorization": f"Bearer {token}"}
 
-    payload = {
-        "result": "MISSING",
-        "notes": "Malicious modification vector test"
-    }
+    payload = {"result": "MISSING", "notes": "Test"}
 
     response = client.patch(f"/api/v1/audits/items/{item.id}", json=payload, headers=headers)
     assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -70,7 +69,7 @@ def test_only_assigned_auditors_can_modify_audit_items(db_session, client, gener
 # 2. STATUS TRANSITION CASCADES ON CYCLE CLOSE
 # ============================================================================
 def test_close_audit_cycle_cascades_missing_items_to_lost_status(db_session, client, generate_token):
-    """Validates that confirming an item as MISSING dynamically moves it into a global LOST state."""
+    """Validates that confirming an item as MISSING moves it to LOST."""
     manager, asset = setup_audit_fixtures(db_session)
     
     cycle = AuditCycle(
@@ -96,6 +95,5 @@ def test_close_audit_cycle_cascades_missing_items_to_lost_status(db_session, cli
     assert response.json()["status"] == AuditCycleStatus.CLOSED.value
     assert response.json()["assets_marked_lost"] == 1
 
-    # Force database synchronization evaluation checking side effects
     db_session.refresh(asset)
     assert asset.status == AssetStatus.LOST

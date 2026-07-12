@@ -39,7 +39,9 @@ class MaintenanceRequest(Base):
 
     # Foreign Keys
     asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="CASCADE"), nullable=False)
-    requester_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="PROTECT"), nullable=False)
+    # FIX: "PROTECT" is not a valid SQL ON DELETE action; RESTRICT is the
+    # correct equivalent.
+    requester_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
 
     # Relationships
     asset = relationship("Asset", back_populates="maintenance_requests")

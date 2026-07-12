@@ -5,19 +5,17 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.database import sessionmaker  # Assumes a session provider setup
+# FIX: previously this imported `sessionmaker` from app.core.database and
+# defined its own get_db() here, while database.py *also* imported get_db
+# back from this module to re-export it — a circular bridge that only
+# happened to work because nothing actually bound the sessionmaker to an
+# engine. Now database.py is the single owner of get_db/engine/SessionLocal.
+from app.core.database import get_db
 from app.models.user import User
 from app.utils.enums import Role
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
-def get_db():
-    """Database session generator dependency."""
-    db = sessionmaker()
-    try:
-        yield db
-    finally:
-        db.close()
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """
@@ -36,18 +34,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-        
+
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise credentials_exception
-        
+
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is inactive"
         )
-        
+
     return user
+
 
 class RoleChecker:
     """
@@ -64,6 +63,7 @@ class RoleChecker:
                 detail="Role not permitted to access this resource"
             )
         return current_user
+
 
 # Pre-defined convenience guards for endpoints
 require_admin = RoleChecker([Role.ADMIN])

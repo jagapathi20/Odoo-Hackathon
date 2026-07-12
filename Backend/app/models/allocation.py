@@ -34,7 +34,11 @@ class Allocation(Base):
     asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="CASCADE"), nullable=False)
     
     # The current holder is a User (Employee/Manager)
-    holder_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="PROTECT"), nullable=False)
+    # FIX: "PROTECT" is not a valid SQL ON DELETE action (it's a Django ORM
+    # concept). Postgres/SQLAlchemy only support CASCADE, SET NULL, SET
+    # DEFAULT, RESTRICT, NO ACTION. RESTRICT gives the equivalent behavior:
+    # block deleting a user who still holds an allocation record.
+    holder_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
 
     # Relationships
     asset = relationship("Asset", back_populates="allocations")
@@ -64,8 +68,9 @@ class TransferRequest(Base):
     
     # Foreign Keys
     allocation_id = Column(UUID(as_uuid=True), ForeignKey("allocations.id", ondelete="CASCADE"), nullable=False)
-    from_holder_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="PROTECT"), nullable=False)
-    to_holder_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="PROTECT"), nullable=False)
+    # FIX: same PROTECT -> RESTRICT correction as above.
+    from_holder_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    to_holder_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
 
     # Relationships
     allocation = relationship("Allocation", back_populates="transfer_requests")

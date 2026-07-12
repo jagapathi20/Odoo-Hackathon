@@ -69,7 +69,7 @@ def list_maintenance_requests(
         
     return {"items": query.all()}
 
-@router.custom_route("PATCH", "/requests/{id}/decision", response_model=MaintenanceRequestOut)
+@router.patch("/requests/{id}/decision", response_model=MaintenanceRequestOut)
 def handle_maintenance_decision(
     id: UUID,
     decision_in: MaintenanceDecision,
@@ -102,7 +102,7 @@ def handle_maintenance_decision(
     db.refresh(ticket)
     return ticket
 
-@router.custom_route("PATCH", "/requests/{id}/assign-technician", response_model=MaintenanceRequestOut)
+@router.patch("/requests/{id}/assign-technician", response_model=MaintenanceRequestOut)
 def assign_technician(
     id: UUID,
     assignment_in: TechnicianAssignment,
@@ -125,7 +125,7 @@ def assign_technician(
     db.refresh(ticket)
     return ticket
 
-@router.custom_route("PATCH", "/requests/{id}/status", response_model=MaintenanceRequestOut)
+@router.patch("/requests/{id}/status", response_model=MaintenanceRequestOut)
 def update_maintenance_status(
     id: UUID,
     status_in: MaintenanceStatusUpdate,
@@ -142,6 +142,19 @@ def update_maintenance_status(
     
     if not ticket:
         raise HTTPException(status_code=404, detail="Maintenance ticket not found")
+
+    # FIX: previously there was no guard against re-finalizing a ticket that
+    # had already reached a terminal state (REJECTED or RESOLVED). A
+    # rejected ticket could still be pushed to RESOLVED and would
+    # incorrectly flip the asset back to AVAILABLE even though it was never
+    # actually serviced. This intentionally does NOT require passing
+    # through TECHNICIAN_ASSIGNED/IN_PROGRESS first, since APPROVED ->
+    # RESOLVED directly is a valid, tested workflow.
+    if ticket.status in (MaintenanceStatus.REJECTED, MaintenanceStatus.RESOLVED):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ticket is already finalized as {ticket.status.value} and cannot be updated further."
+        )
 
     valid_statuses = [MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.RESOLVED]
     if status_in.status not in valid_statuses:

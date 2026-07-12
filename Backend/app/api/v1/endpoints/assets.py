@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -83,29 +84,48 @@ def register_asset(
     category = db.query(AssetCategory).filter(AssetCategory.id == asset_in.category_id).first()
     if not category:
         raise HTTPException(status_code=404, detail="Target asset category not found")
-        
-    # Sequence generator: Auto-increments total count for clean sequential tags (AF-XXXX)
-    asset_count = db.query(Asset).count()
-    generated_tag = f"AF-{str(asset_count + 1).zfill(4)}"
-    
-    db_asset = Asset(
-        tag=generated_tag,
-        name=asset_in.name,
-        serial_number=asset_in.serial_number,
-        condition=asset_in.condition,
-        location=asset_in.location,
-        is_bookable=asset_in.is_bookable,
-        acquisition_date=asset_in.acquisition_date,
-        acquisition_cost=asset_in.acquisition_cost,
-        extra_field_values=asset_in.extra_field_values,
-        photo_urls=asset_in.photo_urls,
-        category_id=asset_in.category_id,
-        status=AssetStatus.AVAILABLE
-    )
-    db.add(db_asset)
-    db.commit()
-    db.refresh(db_asset)
-    return db_asset
+
+    # FIX: the previous implementation computed
+    # `db.query(Asset).count() + 1` and used that single value as the tag
+    # sequence. Two concurrent registration requests can read the same
+    # count before either commits, generate the same tag, and the second
+    # request's INSERT then fails with a raw IntegrityError (500) on the
+    # unique constraint. This retries with a fresh count on collision
+    # instead of crashing.
+    max_attempts = 5
+    last_error = None
+    for _ in range(max_attempts):
+        asset_count = db.query(Asset).count()
+        generated_tag = f"AF-{str(asset_count + 1).zfill(4)}"
+
+        db_asset = Asset(
+            tag=generated_tag,
+            name=asset_in.name,
+            serial_number=asset_in.serial_number,
+            condition=asset_in.condition,
+            location=asset_in.location,
+            is_bookable=asset_in.is_bookable,
+            acquisition_date=asset_in.acquisition_date,
+            acquisition_cost=asset_in.acquisition_cost,
+            extra_field_values=asset_in.extra_field_values,
+            photo_urls=asset_in.photo_urls,
+            category_id=asset_in.category_id,
+            status=AssetStatus.AVAILABLE
+        )
+        db.add(db_asset)
+        try:
+            db.commit()
+        except IntegrityError as exc:
+            db.rollback()
+            last_error = exc
+            continue
+        db.refresh(db_asset)
+        return db_asset
+
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Could not generate a unique asset tag, please retry."
+    ) from last_error
 
 @router.get("/{id}", response_model=AssetDetailOut)
 def get_asset_detail(id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

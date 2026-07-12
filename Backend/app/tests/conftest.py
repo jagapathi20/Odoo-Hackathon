@@ -7,7 +7,7 @@ from app.core.dependencies import get_db
 from app.main import app
 from app.utils.enums import Role
 
-# Use an isolated memory-mapped database string for test routines
+# Use an isolated in-memory database for tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
@@ -18,7 +18,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture(scope="function")
 def db_session():
-    """Initializes schema tables cleanly before each test and drops them after execution."""
+    """Create tables before each test and drop after."""
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     try:
@@ -29,12 +29,9 @@ def db_session():
 
 @pytest.fixture(scope="function")
 def client(db_session):
-    """Dynamic injection hook override supplying the isolated database session context."""
+    """Test client with DB override."""
     def _get_test_db():
-        try:
-            yield db_session
-        finally:
-            pass
+        yield db_session
             
     app.dependency_overrides[get_db] = _get_test_db
     with TestClient(app) as test_client:
@@ -43,16 +40,19 @@ def client(db_session):
 
 @pytest.fixture
 def generate_token(monkeypatch):
-    """Generates valid structural JWT access token payloads for test role authorization verification."""
+    """Generate valid JWT tokens for tests."""
     from jose import jwt
     from app.core.config import settings
     
     def _create_mock_token(user_id: str, role: str) -> str:
-        # Enforce hardcoded secrets for testing environments safely
         monkeypatch.setattr(settings, "JWT_SECRET", "test_secret_key_1234567890_hackathon_demo")
         monkeypatch.setattr(settings, "ALGORITHM", "HS256")
         
-        to_encode = {"sub": str(user_id), "role": role}
+        to_encode = {
+            "sub": str(user_id), 
+            "role": role,
+            "exp": 9999999999  # Far future
+        }
         return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.ALGORITHM)
         
     return _create_mock_token

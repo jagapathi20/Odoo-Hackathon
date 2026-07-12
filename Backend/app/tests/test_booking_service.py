@@ -1,46 +1,114 @@
 import pytest
 import uuid
-from fastapi import HTTPException, status
+from fastapi import status
 from app.models.user import User
 from app.models.asset import Asset
 from app.models.booking import Booking
 from app.utils.enums import Role, AssetStatus, BookingStatus
-from app.services.booking_service import validate_and_create_booking
 
-def test_booking_service_allows_back_to_back_intervals(db_session):
-    """Evaluates standalone booking services to confirm back-to-back edge parameters pass safely."""
+def create_booking_fixtures(db):
     user = User(
-        id=uuid.uuid4(), name="Developer Jagapathi", email="jagapathi@corp.com",
-        hashed_password="pw", role=Role.EMPLOYEE, is_active=True
+        id=uuid.uuid4(),
+        name="Arjun Nair",
+        email="arjun@company.com",
+        hashed_password="hashed_password_123",
+        role=Role.EMPLOYEE,
+        is_active=True
     )
     resource = Asset(
-        id=uuid.uuid4(), tag="ROOM-01", name="Scrum Room",
-        status=AssetStatus.AVAILABLE, category_id=uuid.uuid4(), is_bookable=True
+        id=uuid.uuid4(),
+        tag="AF-0062",
+        name="Conference Room B2",
+        status=AssetStatus.AVAILABLE,
+        category_id=uuid.uuid4(),
+        is_bookable=True
     )
-    db_session.add_all([user, resource])
-    db_session.commit()
+    db.add_all([user, resource])
+    db.commit()
+    db.refresh(user)
+    db.refresh(resource)
+    return user, resource
 
-    # Establish initial anchor row: 09:00 - 10:00
-    booking_1 = Booking(
+# ============================================================================
+# 1. TIME-SLOT OVERLAP PROTECTION MATRIX
+# ============================================================================
+@pytest.mark.parametrize(
+    "existing_start, existing_end, new_start, new_end, should_conflict",
+    [
+        ("09:00", "10:00", "09:30", "10:30", True),
+        ("09:00", "10:00", "08:30", "09:30", True),
+        ("09:00", "12:00", "10:00", "11:00", True),
+        ("09:00", "10:00", "10:00", "11:00", False),
+        ("09:00", "10:00", "13:00", "14:00", False),
+    ]
+)
+def test_booking_overlap_validation_matrix(
+    db_session, client, generate_token, 
+    existing_start, existing_end, new_start, new_end, should_conflict
+):
+    """Enforces mathematical boundary handling for resource scheduling combinations."""
+    user, resource = create_booking_fixtures(db_session)
+    token = generate_token(user.id, Role.EMPLOYEE.value)
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Commit the anchor slot
+    base_booking = Booking(
+        id=uuid.uuid4(),
+        resource_id=resource.id,
+        user_id=user.id,
+        date="2026-07-12",
+        start_time=existing_start,
+        end_time=existing_end,
+        status=BookingStatus.UPCOMING
+    )
+    db_session.add(base_booking)
+    db_session.commit()
+    
+    payload = {
+        "resource_id": str(resource.id),
+        "date": "2026-07-12",
+        "start_time": new_start,
+        "end_time": new_end,
+        "purpose": "Product Architecture Evaluation Sync"
+    }
+
+    response = client.post("/api/v1/bookings", json=payload, headers=headers)
+
+    if should_conflict:
+        assert response.status_code == status.HTTP_409_CONFLICT
+        error = response.json()["detail"]
+        assert error["code"] == "BOOKING_OVERLAP"
+    else:
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["status"] == BookingStatus.UPCOMING.value
+
+
+# ============================================================================
+# 2. DAY-GRID SLOT VIEW RENDERING
+# ============================================================================
+def test_get_booking_slots_calculates_correct_free_vs_booked_states(db_session, client, generate_token):
+    """Ensures the day-view slot mapping correctly reflects booked intervals."""
+    user, resource = create_booking_fixtures(db_session)
+    token = generate_token(user.id, Role.EMPLOYEE.value)
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    active_booking = Booking(
         id=uuid.uuid4(), resource_id=resource.id, user_id=user.id,
         date="2026-07-12", start_time="09:00", end_time="10:00",
         status=BookingStatus.UPCOMING
     )
-    db_session.add(booking_1)
+    db_session.add(active_booking)
     db_session.commit()
 
-    # Attempt to book a strict back-to-back follow-up slice: 10:00 - 11:00
-    # The rule (new.start < existing.end AND new.end > existing.start) must evaluate to False.
-    new_booking = validate_and_create_booking(
-        db=db_session,
-        resource_id=resource.id,
-        user_id=user.id,
-        date="2026-07-12",
-        start="10:00",
-        end="11:00",
-        purpose="Backend Engineering Sync"
+    response = client.get(
+        f"/api/v1/bookings?resource_id={resource.id}&date=2026-07-12",
+        headers=headers
     )
-
-    assert new_booking.id is not None
-    assert new_booking.start_time == "10:00"
-    assert new_booking.status == BookingStatus.UPCOMING
+    
+    assert response.status_code == status.HTTP_200_OK
+    slots = response.json()["slots"]
+    
+    assert slots[0]["start"] == "09:00"
+    assert slots[0]["status"] == "BOOKED"
+    assert slots[1]["start"] == "10:00"
+    assert slots[1]["status"] == "FREE"

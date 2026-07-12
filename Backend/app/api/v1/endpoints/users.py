@@ -57,6 +57,15 @@ def update_user_role(
     admin: User = Depends(require_admin)
 ):
     """The absolute structural boundary preventing self-assigned roles."""
+    # FIX: the docstring already claimed this boundary existed, but no code
+    # actually enforced it — an admin could freely promote/demote their own
+    # account. This blocks an admin from changing their own role record.
+    if id == admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admins cannot change their own role."
+        )
+
     user = db.query(User).filter(User.id == id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

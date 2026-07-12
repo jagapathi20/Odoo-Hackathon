@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 
 from app.models.asset import Asset
 from app.models.allocation import Allocation
+from app.models.user import User
 from app.utils.enums import AssetStatus, AllocationStatus
 
 class AllocationConflictError(Exception):
@@ -20,6 +21,13 @@ def check_and_allocate(db: Session, asset_id: UUID, holder_id: UUID, expected_re
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
+
+    # FIX: previously a nonexistent holder_id would sail through here and
+    # only fail once the INSERT hit the FK constraint, surfacing as an
+    # unhandled IntegrityError (raw 500) instead of a clean 404.
+    holder = db.query(User).filter(User.id == holder_id).first()
+    if not holder:
+        raise HTTPException(status_code=404, detail="Target holder (user) not found")
 
     # Business Rule: Enforce exclusive allocation conflict check
     if asset.status == AssetStatus.ALLOCATED:

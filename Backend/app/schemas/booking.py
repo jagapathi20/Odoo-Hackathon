@@ -13,8 +13,15 @@ class BookingBase(BaseModel):
     @field_validator('start_time', 'end_time')
     @classmethod
     def validate_time_format(cls, value: str) -> str:
-        if not re.match(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$", value):
-            raise ValueError("Time must be in HH:MM 24-hour format")
+        # FIX: the previous pattern `[0-1]?[0-9]` made the leading hour
+        # digit optional, so "9:30" passed validation. The booking overlap
+        # logic (both in the router and booking_service.py) relies on
+        # start_time/end_time being *lexicographically* comparable, which
+        # only works if hours are always zero-padded ("09:30", not "9:30").
+        # "9:30" > "10:00" as strings, which silently breaks overlap
+        # detection. Hours must now be strictly two digits.
+        if not re.match(r"^([01][0-9]|2[0-3]):[0-5][0-9]$", value):
+            raise ValueError("Time must be in zero-padded HH:MM 24-hour format (e.g. 09:30)")
         return value
 
 class BookingCreate(BookingBase):
@@ -24,6 +31,13 @@ class BookingReschedule(BaseModel):
     date: str = Field(..., example="2026-07-13")
     start_time: str = Field(..., example="10:00")
     end_time: str = Field(..., example="11:00")
+
+    @field_validator('start_time', 'end_time')
+    @classmethod
+    def validate_time_format(cls, value: str) -> str:
+        if not re.match(r"^([01][0-9]|2[0-3]):[0-5][0-9]$", value):
+            raise ValueError("Time must be in zero-padded HH:MM 24-hour format (e.g. 09:30)")
+        return value
 
 # Struct representing individual resource slots in day-grid view
 class BookingSlotOut(BaseModel):

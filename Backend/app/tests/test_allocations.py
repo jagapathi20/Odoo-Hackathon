@@ -7,25 +7,28 @@ from app.models.allocation import Allocation, TransferRequest
 from app.utils.enums import Role, AssetStatus, AllocationStatus, TransferStatus
 
 def create_mock_user(db, name, email, role, department_id=None):
+    """Helper to create test users safely."""
     user = User(
         id=uuid.uuid4(),
         name=name,
         email=email,
-        hashed_password="mocked_password",
+        hashed_password="mocked_password_hash_123456",
         role=role,
         department_id=department_id or uuid.uuid4(),
         is_active=True
     )
     db.add(user)
     db.commit()
+    db.refresh(user)
     return user
 
 def create_mock_asset(db, name, status_val, department_id, tag="AF-0114"):
+    """Helper with safe UUID/serial handling."""
     asset = Asset(
         id=uuid.uuid4(),
         tag=tag,
         name=name,
-        serial_number=f"SN-{uuid.uuid4().hex[:6].upper()}",
+        serial_number=f"SN-{uuid.uuid4().hex[:8].upper()}",  # Fixed .hex usage
         status=status_val,
         department_id=department_id,
         category_id=uuid.uuid4(),
@@ -33,6 +36,7 @@ def create_mock_asset(db, name, status_val, department_id, tag="AF-0114"):
     )
     db.add(asset)
     db.commit()
+    db.refresh(asset)
     return asset
 
 # ============================================================================

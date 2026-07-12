@@ -46,7 +46,9 @@ class Asset(Base):
     photo_urls = Column(ARRAY(String), nullable=False, default=list, server_default="'{}'::varchar[]")
 
     # Foreign Keys
-    category_id = Column(UUID(as_uuid=True), ForeignKey("asset_categories.id", ondelete="PROTECT"), nullable=False)
+    # FIX: "PROTECT" is not a valid SQL ON DELETE action; RESTRICT is the
+    # correct equivalent (block deleting a category still in use by assets).
+    category_id = Column(UUID(as_uuid=True), ForeignKey("asset_categories.id", ondelete="RESTRICT"), nullable=False)
     department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships

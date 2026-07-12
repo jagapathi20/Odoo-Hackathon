@@ -3,6 +3,15 @@ from uuid import UUID
 from typing import Optional, List
 from app.utils.enums import AuditCycleStatus, AuditItemResult
 
+# Define the minimal asset projection to break circular import dependencies
+class AssetMinOut(BaseModel):
+    id: UUID
+    tag: str
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class AuditCycleCreate(BaseModel):
     name: str = Field(..., max_length=255)
     scope_department_id: UUID
